@@ -1,10 +1,5 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Jun 25 18:09:19 2023
-
-@author: UCKAN
-"""
 import mysql.connector
+import json
 
 def connect_to_database():
     db_host = 'localhost'
@@ -18,16 +13,19 @@ def connect_to_database():
         password=db_password,
         database=db_name
     )
-    
+
     return db_connection
 
-def insert_book_info(db_connection, book_name, book_price, publisher_name):
+def insert_book_info(db_connection, book_name, author, book_price, publisher_name, book_info_json):
     db_cursor = db_connection.cursor()
 
-    query = "INSERT IGNORE INTO book_info (book_name, book_price, publisher_name) VALUES (%s, %s, %s)"
-    values = (book_name, book_price, publisher_name)
-    
-    db_cursor.execute(query, values)
-    db_connection.commit()
+    query = "INSERT IGNORE INTO books (book_name, author , price, book_publisher, book_info) VALUES (%s, %s, %s, %s, %s)"
+    values = (book_name, author ,book_price, publisher_name, book_info_json)
+
+    try:
+        db_cursor.execute(query, values)
+        db_connection.commit()
+    except Exception as e:
+        print("Error occurred while inserting data into the database:", e)
 
     db_cursor.close()
