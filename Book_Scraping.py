@@ -17,9 +17,12 @@ import json
 # Establish a database connection
 db_connection = connect_to_database()
 
+session = requests.session()
 
+session.mount('http://', requests.adapters.HTTPAdapter(pool_connections=10, pool_maxsize=10))
+session.mount('https://', requests.adapters.HTTPAdapter(pool_connections=10, pool_maxsize=10))
 
-idefix_all_pages = 7665
+# idefix_all_pages = 7665
 
 
 def href_collecter(a_elements):
@@ -31,13 +34,12 @@ def href_collecter(a_elements):
     return hrefs  # Return the list of href values
 
 
-def h1_collector(href):
-    link2 = f'https://www.idefix.com{href}'
-    response2 = requests.get(link2)
-    source2 = response2.text
+def h1_collector(href, session):
+    response = session.get(f'https://www.idefix.com{href}')
+    source = response.text
     
-    if response2.status_code == 200:
-     soup2 = BeautifulSoup(source2, 'lxml')
+    if response.status_code == 200:
+     soup2 = BeautifulSoup(source, 'lxml')
      h1_element = soup2.find('h1', class_='text-[1.375rem] font-medium leading-[1.875rem] mb-[0.375rem]')
      if h1_element:
          book_name_parts = [element.strip() for element in h1_element.contents if isinstance(element, str)]
@@ -60,18 +62,17 @@ def h1_collector(href):
      
     return None, None, None  # Return None values if no valid h1_element is found     
       
-def book_detailed_info_collector(href):
-    link3 = f'https://www.idefix.com{href}'
-    response3 = requests.get(link3)
-    source3 = response3.text
+def book_detailed_info_collector(href, session):
+    response = session.get(f'https://www.idefix.com{href}')
+    source = response.text
     
-    if response3.status_code == 200:
-     soup3 = BeautifulSoup(source3, 'lxml')
+    if response.status_code == 200:
+     soup3 = BeautifulSoup(source, 'lxml')
      main_div_element = soup3.find('div', class_='grid grid-cols-2 lg:grid-cols-3 gap-x-8 lg:gap-x-[2.813rem] gap-y-5 mb-8')
      if main_div_element:
          upper_span_elements = main_div_element.find_all('span', class_='leading-5 xl:text-base lg:text-tiny')
          book_info1 = [element1.get_text(strip=True) for element1 in upper_span_elements if isinstance(element1, Tag)]
-         book_info1.pop(1) # Popped the second element because it was about the auother of the book and I already scraped the author in an another function
+         book_info1.pop(1) # Popped the second element because it was about the auther of the book and I already scraped the author in an another function
          
          bottom_span_elements = main_div_element.find_all('span', class_='font-medium leading-5 xl:text-base lg:text-tiny')
          book_info2 = [element2.get_text(strip=True) for element2 in bottom_span_elements if isinstance(element2, Tag)]
@@ -81,13 +82,13 @@ def book_detailed_info_collector(href):
 
          return comp_book_info
          
-def price_collector(href):
-    link4 = f'https://www.idefix.com{href}'
-    response4 = requests.get(link4)
-    source4 = response4.text
+def price_collector(href, session):
+    response = session.get(f'https://www.idefix.com{href}')
+    source = response.text
     
-    if response4.status_code == 200:
-     soup4 = BeautifulSoup(source4, 'lxml')
+    
+    if response.status_code == 200:
+     soup4 = BeautifulSoup(source, 'lxml')
      price_element = soup4.find('span', class_='text-[1.125rem] xl:text-[1.375rem] leading-[1.875rem] font-medium')
      price = price_element.get_text(strip=True)
      return price
@@ -101,9 +102,8 @@ def Scrape_Data(max_page):
  
     while page<=max_page: 
           
-            link = f'https://www.idefix.com/kitap-kultur-c-3307?sayfa={page}'
-            response = requests.get(link)
-            source = requests.get(link).text
+            response = session.get(f'https://www.idefix.com/kitap-kultur-c-3307?sayfa={page}')
+            source = response.text
             
             if response.status_code == 200:
                 # Page exists proceed with scraping 
@@ -112,9 +112,9 @@ def Scrape_Data(max_page):
                 hrefs = href_collecter(a_elements)  # Get the list of href values
                 if a_elements:
                     for href in hrefs:
-                        book_name, book_publisher, author = h1_collector(href)
-                        price = price_collector(href)
-                        comp_book_info = book_detailed_info_collector(href)
+                        book_name, book_publisher, author = h1_collector(href, session)
+                        price = price_collector(href, session)
+                        comp_book_info = book_detailed_info_collector(href, session)
 
                         # Convert the dictionary to a JSON string
                         comp_book_info_json = json.dumps(comp_book_info)
@@ -151,7 +151,7 @@ while True:
 
     if inpt.lower() == 's':
         # Executing the scraper for one page
-        Scrape_Data(5)
+        Scrape_Data(1)
         inpt2 = input("Press 'd' to stop collecting data or 'c' to continue: ")
 
         if inpt2.lower() == 'd':
@@ -172,8 +172,5 @@ while True:
         print("Invalid input. Please enter 's' to start or 'd' to stop.")
         continue
 
-        
-
-    
-
-
+# Close the session to release resources
+session.close()    
